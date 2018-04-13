@@ -4,6 +4,8 @@ import com.main.data.ServerErrorMessage;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import java.util.Optional;
+
 public class ResponseObject<T> {
 
     private ResponseEntity<T> responseObject;
@@ -17,12 +19,12 @@ public class ResponseObject<T> {
         this.responseError = responseError;
     }
 
-    public ResponseEntity<T> getObject() {
+    public ResponseEntity<T> getResponse() {
         return responseObject;
     }
 
-    public ServerErrorMessage getError() {
-        return responseError;
+    public Optional<ServerErrorMessage> getError() {
+        return Optional.of(responseError);
     }
 
     public boolean isError() {

@@ -11,56 +11,96 @@ public class RestTest {
 
     private static final String SERVER_IP = "http://localhost:8080/";
 
-    public static void main(String[] args) {
+    private JsonRequestFactory jsonRequestFactory = new JsonRequestFactory(SERVER_IP);
 
-        JsonRequestFactory jsonRequestFactory = new JsonRequestFactory(SERVER_IP);
+    public RestTest() {
+        final Credentials credentials = new Credentials("User", "1234");
+        this.registerUser(credentials);
+        String key = this.loginUser(credentials);
+        this.createRoom(key);
+    }
 
+    private boolean registerUser(Credentials credentials) {
+        System.out.println("registering... ");
+        ResponseObject<String> stringResponseObject = jsonRequestFactory.makeRequest("user", HttpMethod.POST, credentials.getUsernameParam(), credentials.getPasswordParam());
+        if (!stringResponseObject.isError()) {
+            System.out.println("Success " + stringResponseObject.getResponse().getBody());
+            return true;
+        }
+        stringResponseObject.getError().ifPresent(serverErrorMessage -> System.err.println("ERR " + serverErrorMessage.getMessage()));
+        return false;
+    }
+
+    private String loginUser(Credentials credentials) {
+        System.out.println("logging... ");
+        ResponseObject<UserData> stringResponseObject = jsonRequestFactory.makeRequest("user", HttpMethod.GET, UserData.class, credentials.getUsernameParam(), credentials.getPasswordParam());
+        if (!stringResponseObject.isError()) {
+            System.out.println("Success " + stringResponseObject.getResponse().getBody());
+            return stringResponseObject.getResponse().getBody().getApiKey();
+        }
+        stringResponseObject.getError().ifPresent(serverErrorMessage -> System.err.println("ERR " + serverErrorMessage.getMessage()));
+        return null;
+    }
+
+    private boolean createRoom(String key) {
+        System.out.println("room... ");
+        ResponseObject<String> stringResponseObject = jsonRequestFactory.makeRequest("room", HttpMethod.POST, new Param("key", key));
+        if (!stringResponseObject.isError()) {
+            System.out.println("Success " + stringResponseObject.getResponse().getBody());
+            return true;
+        }
+        stringResponseObject.getError().ifPresent(serverErrorMessage -> System.err.println("ERR " + serverErrorMessage.getMessage()));
+        return false;
+    }
+
+    private void test() {
         final String username = "John";
         final String password = "1234";
 
-        System.out.println("REGISTER ");
 
-        ResponseObject<String> stringResponseObject = jsonRequestFactory.makeRequest("user/register", HttpMethod.POST, new Param("username", username), new Param("password", password));
-        if (!stringResponseObject.isError()) {
-            System.out.println("Success " + stringResponseObject.getObject().getBody());
-        } else {
-//            System.err.println("Error " + ((ServerErrorMessage) responseEntity.getBody()).getMessage());
-            System.err.println("Error " + stringResponseObject.getError().getMessage());
-        }
 
-        String api = "";
-
-        System.out.println("LOGIN ");
-        ResponseObject<UserData> userDataResponseObject = jsonRequestFactory.makeRequest("user/login", HttpMethod.POST, UserData.class,
-                new Param("username", username), new Param("password", password));
-        if (!userDataResponseObject.isError()) {
-            System.out.println("Success " + userDataResponseObject.getObject().getBody().toString());
-            api = userDataResponseObject.getObject().getBody().getApiKey();
-        } else {
-//            System.err.println("Error " + ((ServerErrorMessage) responseEntity.getBody()).getMessage());
-            System.err.println("Error " + userDataResponseObject.getError().getMessage());
-        }
-
-        System.out.println("LOGIN HERE");
-        userDataResponseObject = jsonRequestFactory.makeRequest("user/login", HttpMethod.POST, UserData.class, new Param("username", username), new Param("password", "asd"));
-        if (!userDataResponseObject.isError()) {
-            System.out.println("Success " + userDataResponseObject.getObject().getBody().toString());
-        } else {
-//            System.err.println("Error " + jsonRequestFactory.getServerErrorResponse().getMessage());
-            System.err.println("Error " + userDataResponseObject.getError().getMessage());
-        }
-
-        System.out.println("LOGIN ");
-        userDataResponseObject = jsonRequestFactory.makeRequest("user/login", HttpMethod.POST, UserData.class, new Param("username", "Ba"), new Param("password", password));
-        if (!userDataResponseObject.isError()) {
-            System.out.println("Success " + userDataResponseObject.getObject().getBody().toString());
-        } else {
-//            System.err.println("Error " + jsonRequestFactory.getServerErrorResponse().getMessage());
-            System.err.println("Error " + userDataResponseObject.getError().getMessage());
-        }
-
+//        String api = "";
+//
+//        System.out.println("LOGIN ");
+//        ResponseObject<UserData> userDataResponseObject = jsonRequestFactory.makeRequest("user/login", HttpMethod.GET, UserData.class,
+//                new Param("username", username), new Param("password", password));
+//        if (!userDataResponseObject.isError()) {
+//            System.out.println("Success " + userDataResponseObject.getResponse().getBody().toString());
+//            api = userDataResponseObject.getResponse().getBody().getApiKey();
+//        } else {
+////            System.err.println("Error " + ((ServerErrorMessage) responseEntity.getBody()).getMessage());
+//            System.err.println("Error " + userDataResponseObject.getError().getMessage());
+//        }
+//
+//        System.out.println("LOGIN HERE");
+//        userDataResponseObject = jsonRequestFactory.makeRequest("user/login", HttpMethod.GET, UserData.class, new Param("username", username), new Param("password", "asd"));
+//        if (!userDataResponseObject.isError()) {
+//            System.out.println("Success " + userDataResponseObject.getResponse().getBody().toString());
+//        } else {
+////            System.err.println("Error " + jsonRequestFactory.getServerErrorResponse().getMessage());
+//            System.err.println("Error " + userDataResponseObject.getError().getMessage());
+//        }
+//
+//        System.out.println("LOGIN ");
+//        userDataResponseObject = jsonRequestFactory.makeRequest("user/login", HttpMethod.GET, UserData.class, new Param("username", "Ba"), new Param("password", password));
+//        if (!userDataResponseObject.isError()) {
+//            System.out.println("Success " + userDataResponseObject.getResponse().getBody().toString());
+//        } else {
+////            System.err.println("Error " + jsonRequestFactory.getServerErrorResponse().getMessage());
+//            System.err.println("Error " + userDataResponseObject.getError().getMessage());
+//        }
+//
+////        System.out.println("DELETE ");
+////        stringResponseObject = jsonRequestFactory.makeRequest("user/delete", HttpMethod.POST, new Param("apiKey", api));
+////        if (!stringResponseObject.isError()) {
+////            System.out.println("Success " + stringResponseObject.getResponse().getBody());
+////        } else {
+//////            System.err.println("Error " + jsonRequestFactory.getServerErrorResponse().getMessage());
+////            System.err.println("Error " + stringResponseObject.getError().getMessage());
+////        }
+////
 //        System.out.println("DELETE ");
-//        stringResponseObject = jsonRequestFactory.makeRequest("user/delete", HttpMethod.POST, new Param("apiKey", api));
+//        stringResponseObject = jsonRequestFactory.makeRequest("user/delete", HttpMethod.DELETE, new Param("apiKey", api));
 //        if (!stringResponseObject.isError()) {
 //            System.out.println("Success " + stringResponseObject.getObject().getBody());
 //        } else {
@@ -68,23 +108,17 @@ public class RestTest {
 //            System.err.println("Error " + stringResponseObject.getError().getMessage());
 //        }
 //
-        System.out.println("DELETE ");
-        stringResponseObject = jsonRequestFactory.makeRequest("user/delete", HttpMethod.POST, new Param("apiKey", "dsasdasdasd"));
-        if (!stringResponseObject.isError()) {
-            System.out.println("Success " + stringResponseObject.getObject().getBody());
-        } else {
-//            System.err.println("Error " + jsonRequestFactory.getServerErrorResponse().getMessage());
-            System.err.println("Error " + stringResponseObject.getError().getMessage());
-        }
+//        System.out.println("LOGIN HERE");
+//        userDataResponseObject = jsonRequestFactory.makeRequest("user/login", HttpMethod.GET, UserData.class, new Param("username", username), new Param("password", "asdsfdsfsd"));
+//        if (!userDataResponseObject.isError()) {
+//            System.out.println("Success " + userDataResponseObject.getResponse().getBody().toString());
+//        } else {
+////            System.err.println("Error " + jsonRequestFactory.getServerErrorResponse().getMessage());
+//            System.err.println("Error " + userDataResponseObject.getError().getMessage());
+//        }
+    }
 
-        System.out.println("LOGIN HERE");
-        userDataResponseObject = jsonRequestFactory.makeRequest("user/login", HttpMethod.POST, UserData.class, new Param("username", username), new Param("password", "asdsfdsfsd"));
-        if (!userDataResponseObject.isError()) {
-            System.out.println("Success " + userDataResponseObject.getObject().getBody().toString());
-        } else {
-//            System.err.println("Error " + jsonRequestFactory.getServerErrorResponse().getMessage());
-            System.err.println("Error " + userDataResponseObject.getError().getMessage());
-        }
-
+    public static void main(String[] args) {
+        new RestTest();
     }
 }
