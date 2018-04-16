@@ -1,18 +1,16 @@
 package com.main.net;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.main.data.ServerErrorMessage;
+import com.main.error.ServerErrorMessage;
 import org.springframework.http.*;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
-import sun.util.locale.LanguageTag;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Locale;
 import java.util.Map;
 
 public class JsonRequestFactory {

@@ -14,10 +14,11 @@ public class RestTest {
     private JsonRequestFactory jsonRequestFactory = new JsonRequestFactory(SERVER_IP);
 
     public RestTest() {
-        final Credentials credentials = new Credentials("User", "1234");
+        final Credentials credentials = new Credentials("User", null);
         this.registerUser(credentials);
         String key = this.loginUser(credentials);
         this.createRoom(key);
+        this.joinRoom(key, 1L);
     }
 
     private boolean registerUser(Credentials credentials) {
@@ -45,6 +46,17 @@ public class RestTest {
     private boolean createRoom(String key) {
         System.out.println("room... ");
         ResponseObject<String> stringResponseObject = jsonRequestFactory.makeRequest("room", HttpMethod.POST, new Param("key", key));
+        if (!stringResponseObject.isError()) {
+            System.out.println("Success " + stringResponseObject.getResponse().getBody());
+            return true;
+        }
+        stringResponseObject.getError().ifPresent(serverErrorMessage -> System.err.println("ERR " + serverErrorMessage.getMessage()));
+        return false;
+    }
+
+    private boolean joinRoom(String key, long roomId) {
+        System.out.println("join... ");
+        ResponseObject<String> stringResponseObject = jsonRequestFactory.makeRequest("room", HttpMethod.POST, new Param("key", key), new Param("roomId", roomId));
         if (!stringResponseObject.isError()) {
             System.out.println("Success " + stringResponseObject.getResponse().getBody());
             return true;

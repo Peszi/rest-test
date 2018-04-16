@@ -1,7 +1,6 @@
 package com.main.net;
 
-import com.main.data.ServerErrorMessage;
-import org.springframework.http.HttpStatus;
+import com.main.error.ServerErrorMessage;
 import org.springframework.http.ResponseEntity;
 
 import java.util.Optional;
