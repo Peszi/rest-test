@@ -1,136 +1,131 @@
 package com.main;
 
-import com.main.data.Credentials;
-import com.main.data.UserData;
-import com.main.net.JsonRequestFactory;
-import com.main.net.Param;
-import com.main.net.ResponseObject;
-import org.springframework.http.HttpMethod;
+import com.main.net.model.AccessToken;
+import com.main.net.model.RequestEntry;
+import com.main.net.model.TokenDTO;
+import com.main.net.util.ApiConstants;
+import com.main.net.util.ApiUtil;
+import org.springframework.http.*;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.http.converter.StringHttpMessageConverter;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
 
-public class RestTest {
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Map;
 
+public class RestTest implements Runnable {
+
+    private static final int CONNECT_TIMEOUT = 5000;
     private static final String SERVER_IP = "http://localhost:8080/";
 
-    private JsonRequestFactory jsonRequestFactory = new JsonRequestFactory(SERVER_IP);
+    private LinkedList<RequestEntry> requestsQueue;
+
+    private RestTemplate restTemplate;
+
+    private AccessToken userToken;
 
     public RestTest() {
-        final Credentials credentials = new Credentials("User", null);
-        this.registerUser(credentials);
-        String key = this.loginUser(credentials);
-        this.createRoom(key);
-        this.joinRoom(key, 1L);
+        this.requestsQueue = new LinkedList<>();
+        this.restTemplate = new RestTemplate();
+        this.restTemplate.getMessageConverters().add(new StringHttpMessageConverter());
+        this.userToken = new AccessToken(ApiUtil.getBasicAuth("frontendClientId", "frontendClientSecret"));
+        new Thread(this).start();
     }
 
-    private boolean registerUser(Credentials credentials) {
-        System.out.println("registering... ");
-        ResponseObject<String> stringResponseObject = jsonRequestFactory.makeRequest("user", HttpMethod.POST, credentials.getUsernameParam(), credentials.getPasswordParam());
-        if (!stringResponseObject.isError()) {
-            System.out.println("Success " + stringResponseObject.getResponse().getBody());
-            return true;
+    public void executeRequest(RequestEntry requestEntry) {
+        synchronized (this.requestsQueue) {
+            this.requestsQueue.add(requestEntry);
+            this.requestsQueue.notify();
         }
-        stringResponseObject.getError().ifPresent(serverErrorMessage -> System.err.println("ERR " + serverErrorMessage.getMessage()));
-        return false;
     }
 
-    private String loginUser(Credentials credentials) {
-        System.out.println("logging... ");
-        ResponseObject<UserData> stringResponseObject = jsonRequestFactory.makeRequest("user", HttpMethod.GET, UserData.class, credentials.getUsernameParam(), credentials.getPasswordParam());
-        if (!stringResponseObject.isError()) {
-            System.out.println("Success " + stringResponseObject.getResponse().getBody());
-            return stringResponseObject.getResponse().getBody().getApiKey();
+    @Override
+    public void run() {
+        while(true) {
+            try {
+                RequestEntry currentRequest = null;
+                synchronized (this.requestsQueue) {
+                    if (this.requestsQueue.isEmpty()) {
+                       this.requestsQueue.wait();
+                    } else {
+                        currentRequest = this.requestsQueue.poll();
+                    }
+                }
+                // TODO handle request
+                if (currentRequest != null)
+                    currentRequest.getRequestResultInterface().onRequestResult(true, 200, new Object());
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
-        stringResponseObject.getError().ifPresent(serverErrorMessage -> System.err.println("ERR " + serverErrorMessage.getMessage()));
-        return null;
     }
 
-    private boolean createRoom(String key) {
-        System.out.println("room... ");
-        ResponseObject<String> stringResponseObject = jsonRequestFactory.makeRequest("room", HttpMethod.POST, new Param("key", key));
-        if (!stringResponseObject.isError()) {
-            System.out.println("Success " + stringResponseObject.getResponse().getBody());
-            return true;
+    private void setTimeout(RestTemplate restTemplate, int timeout) {
+        restTemplate.setRequestFactory(new SimpleClientHttpRequestFactory());
+        SimpleClientHttpRequestFactory requestFactory = (SimpleClientHttpRequestFactory) restTemplate.getRequestFactory();
+        requestFactory.setReadTimeout(timeout);
+        requestFactory.setConnectTimeout(timeout);
+    }
+
+    public void loginRequest(String username, String password) {
+        Map<String, String> values = new HashMap<>();
+        values.put("grant_type", "password");
+        values.put("username", username);
+        values.put("password", password);
+        this.authRequest(values);
+    }
+
+    public void refreshRequest() {
+        if (this.userToken.getUserToken() != null && this.userToken.getUserToken().getRefreshToken() != null) {
+            Map<String, String> values = new HashMap<>();
+            values.put("grant_type", "refresh_token");
+            values.put("refresh_token", this.userToken.getUserToken().getRefreshToken());
+            this.authRequest(values);
+        } else {
+            System.err.println("Refresh token not presented!");
         }
-        stringResponseObject.getError().ifPresent(serverErrorMessage -> System.err.println("ERR " + serverErrorMessage.getMessage()));
-        return false;
     }
 
-    private boolean joinRoom(String key, long roomId) {
-        System.out.println("join... ");
-        ResponseObject<String> stringResponseObject = jsonRequestFactory.makeRequest("room", HttpMethod.POST, new Param("key", key), new Param("roomId", roomId));
-        if (!stringResponseObject.isError()) {
-            System.out.println("Success " + stringResponseObject.getResponse().getBody());
-            return true;
+    public void authRequest(Map<String, String> values) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Content-Type", MediaType.APPLICATION_FORM_URLENCODED_VALUE);
+        headers.set("Authorization", ApiConstants.BASIC_AUTH + this.userToken.getBasicAuth());
+        try {
+            HttpEntity<String> request = new HttpEntity<>(ApiUtil.getStringChain(values), headers);
+            ResponseEntity<TokenDTO> response = restTemplate.exchange(SERVER_IP + ApiConstants.AUTH_ENDPOINT, HttpMethod.POST, request, TokenDTO.class);
+            this.userToken.setUserToken(response.getBody());
+            response.getStatusCodeValue();
+            System.out.println("Authorization success!");
+        } catch (ResourceAccessException e) {
+            System.err.println("Timeout!");
+        } catch (HttpClientErrorException e) {
+            System.err.println("HttpClientErrorException!");
+            System.err.println(e.getRawStatusCode());
+        } catch (RestClientException e) {
+            System.err.println("RestClientException!");
+            System.err.println(e.getMessage());
         }
-        stringResponseObject.getError().ifPresent(serverErrorMessage -> System.err.println("ERR " + serverErrorMessage.getMessage()));
-        return false;
-    }
-
-    private void test() {
-        final String username = "John";
-        final String password = "1234";
-
-
-
-//        String api = "";
-//
-//        System.out.println("LOGIN ");
-//        ResponseObject<UserData> userDataResponseObject = jsonRequestFactory.makeRequest("user/login", HttpMethod.GET, UserData.class,
-//                new Param("username", username), new Param("password", password));
-//        if (!userDataResponseObject.isError()) {
-//            System.out.println("Success " + userDataResponseObject.getResponse().getBody().toString());
-//            api = userDataResponseObject.getResponse().getBody().getApiKey();
-//        } else {
-////            System.err.println("Error " + ((ServerErrorMessage) responseEntity.getBody()).getMessage());
-//            System.err.println("Error " + userDataResponseObject.getError().getMessage());
-//        }
-//
-//        System.out.println("LOGIN HERE");
-//        userDataResponseObject = jsonRequestFactory.makeRequest("user/login", HttpMethod.GET, UserData.class, new Param("username", username), new Param("password", "asd"));
-//        if (!userDataResponseObject.isError()) {
-//            System.out.println("Success " + userDataResponseObject.getResponse().getBody().toString());
-//        } else {
-////            System.err.println("Error " + jsonRequestFactory.getServerErrorResponse().getMessage());
-//            System.err.println("Error " + userDataResponseObject.getError().getMessage());
-//        }
-//
-//        System.out.println("LOGIN ");
-//        userDataResponseObject = jsonRequestFactory.makeRequest("user/login", HttpMethod.GET, UserData.class, new Param("username", "Ba"), new Param("password", password));
-//        if (!userDataResponseObject.isError()) {
-//            System.out.println("Success " + userDataResponseObject.getResponse().getBody().toString());
-//        } else {
-////            System.err.println("Error " + jsonRequestFactory.getServerErrorResponse().getMessage());
-//            System.err.println("Error " + userDataResponseObject.getError().getMessage());
-//        }
-//
-////        System.out.println("DELETE ");
-////        stringResponseObject = jsonRequestFactory.makeRequest("user/delete", HttpMethod.POST, new Param("apiKey", api));
-////        if (!stringResponseObject.isError()) {
-////            System.out.println("Success " + stringResponseObject.getResponse().getBody());
-////        } else {
-//////            System.err.println("Error " + jsonRequestFactory.getServerErrorResponse().getMessage());
-////            System.err.println("Error " + stringResponseObject.getError().getMessage());
-////        }
-////
-//        System.out.println("DELETE ");
-//        stringResponseObject = jsonRequestFactory.makeRequest("user/delete", HttpMethod.DELETE, new Param("apiKey", api));
-//        if (!stringResponseObject.isError()) {
-//            System.out.println("Success " + stringResponseObject.getObject().getBody());
-//        } else {
-////            System.err.println("Error " + jsonRequestFactory.getServerErrorResponse().getMessage());
-//            System.err.println("Error " + stringResponseObject.getError().getMessage());
-//        }
-//
-//        System.out.println("LOGIN HERE");
-//        userDataResponseObject = jsonRequestFactory.makeRequest("user/login", HttpMethod.GET, UserData.class, new Param("username", username), new Param("password", "asdsfdsfsd"));
-//        if (!userDataResponseObject.isError()) {
-//            System.out.println("Success " + userDataResponseObject.getResponse().getBody().toString());
-//        } else {
-////            System.err.println("Error " + jsonRequestFactory.getServerErrorResponse().getMessage());
-//            System.err.println("Error " + userDataResponseObject.getError().getMessage());
-//        }
     }
 
     public static void main(String[] args) {
-        new RestTest();
+        RestTest restTest = new RestTest();
+
+        restTest.executeRequest(new RequestEntry());
+
+//        restTest.loginRequest("user@email.cm", "1234");
+//
+//        try {
+//            Thread.sleep(1000);
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
+//        }
+//
+//        restTest.refreshRequest();
+
+        System.out.println("End");
     }
 }

@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="oauth2library-2.4.2-javadoc">
+    <CLASSES />
+    <JAVADOC>
+      <root url="jar://$PROJECT_DIR$/../../Libs/oauth2library-2.4.2-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$PROJECT_DIR$/../../Libs/oauth2library-2.4.2-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

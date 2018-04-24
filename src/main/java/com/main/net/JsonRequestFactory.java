@@ -1,6 +1,7 @@
 package com.main.net;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.main.data.Param;
 import com.main.error.ServerErrorMessage;
 import org.springframework.http.*;
 import org.springframework.http.converter.StringHttpMessageConverter;
@@ -11,11 +12,13 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Map;
 
 public class JsonRequestFactory {
 
     private String serverIp;
+    private String basicAuth;
 
     private RestTemplate restTemplate;
     private HttpEntity<?> httpEntity;
@@ -27,6 +30,11 @@ public class JsonRequestFactory {
         this.restTemplate.getMessageConverters().add(new StringHttpMessageConverter());
         this.httpEntity = new HttpEntity<>(this.getHttpHeaders());
         this.jsonMapper = new ObjectMapper();
+    }
+
+    private String getBasicAuthString(String clientId, String secret) {
+        final byte[] base64 = new String(clientId + ":" + secret).getBytes();
+        return "Basic " + new String(Base64.getEncoder().encode(base64));
     }
 
     private HttpHeaders getHttpHeaders() {
@@ -74,7 +82,7 @@ public class JsonRequestFactory {
         return responseEntity;
     }
 
-    private ServerErrorMessage getErrorResponse(HttpClientErrorException e) {
+    public ServerErrorMessage getErrorResponse(HttpClientErrorException e) {
         try {
             return this.jsonMapper.readValue(e.getResponseBodyAsString(), ServerErrorMessage.class);
         } catch (IOException e1) {

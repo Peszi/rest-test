@@ -1,7 +1,5 @@
 package com.main.data;
 
-import com.main.net.Param;
-
 public class Credentials {
 
     private String username;
