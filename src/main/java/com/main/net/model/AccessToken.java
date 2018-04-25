@@ -7,6 +7,7 @@ public class AccessToken {
 
     public AccessToken(String basicAuth) {
         this.basicAuth = basicAuth;
+        this.userToken = new TokenDTO();
     }
 
     public void setBasicAuth(String basicAuth) {

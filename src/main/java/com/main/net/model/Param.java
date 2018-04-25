@@ -1,4 +1,4 @@
-package com.main.data;
+package com.main.net.model;
 
 public class Param {
 

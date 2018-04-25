@@ -1,7 +1,7 @@
 package com.main.net;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.main.data.Param;
+import com.main.net.model.Param;
 import com.main.error.ServerErrorMessage;
 import org.springframework.http.*;
 import org.springframework.http.converter.StringHttpMessageConverter;

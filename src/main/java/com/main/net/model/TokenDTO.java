@@ -6,7 +6,10 @@ public class TokenDTO {
     private String refreshToken;
     private int expiresIn;
 
-    public TokenDTO() {}
+    public TokenDTO() {
+        this.accessToken = "";
+        this.refreshToken = "";
+    }
 
     public void setAccess_token(String access_token) {
         this.accessToken = access_token;

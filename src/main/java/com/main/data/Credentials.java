@@ -1,5 +1,7 @@
 package com.main.data;
 
+import com.main.net.model.Param;
+
 public class Credentials {
 
     private String username;
