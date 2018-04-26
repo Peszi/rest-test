@@ -1,6 +1,6 @@
 package com.main.data;
 
-import com.main.net.model.Param;
+import com.main.api.data.Param;
 
 public class Credentials {
 

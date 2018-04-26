@@ -1,7 +1,7 @@
-package com.main.net;
+package com.main.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.main.net.model.Param;
+import com.main.api.data.Param;
 import com.main.error.ServerErrorMessage;
 import org.springframework.http.*;
 import org.springframework.http.converter.StringHttpMessageConverter;
@@ -15,6 +15,7 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.Map;
 
+@Deprecated
 public class JsonRequestFactory {
 
     private String serverIp;

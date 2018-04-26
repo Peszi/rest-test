@@ -1,12 +1,14 @@
-package com.main.net;
+package com.main.api.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.main.net.model.AccessToken;
-import com.main.net.model.UnauthorizedErrorDTO;
-import com.main.net.request.BaseRequest;
-import com.main.net.model.TokenDTO;
-import com.main.net.request.RefreshRequest;
-import com.main.net.util.ApiUtil;
+import com.main.api.Logger;
+import com.main.api.listener.AuthErrorListener;
+import com.main.api.data.AccessToken;
+import com.main.api.model.AuthErrorMessageDTO;
+import com.main.api.request.BaseRequest;
+import com.main.api.model.TokenDTO;
+import com.main.api.request.RefreshRequest;
+import com.main.api.util.ApiUtil;
 import org.springframework.http.*;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.http.converter.StringHttpMessageConverter;
@@ -18,18 +20,19 @@ import org.springframework.web.client.RestTemplate;
 import java.io.IOException;
 import java.util.LinkedList;
 
-public class ApiRequestFactory implements Runnable {
+public class ApiRequestFactoryImpl implements ApiRequestFactory, Runnable {
 
     private String serverIp;
 
     private LinkedList<BaseRequest> requestsQueue;
-
     private RestTemplate restTemplate;
     private ObjectMapper objectMapper;
 
     private AccessToken userToken;
 
-    public ApiRequestFactory(String serverIp, String clientId, String secret) {
+    private AuthErrorListener authErrorListener;
+
+    public ApiRequestFactoryImpl(String serverIp, String clientId, String secret) {
         this.serverIp = serverIp;
         this.requestsQueue = new LinkedList<>();
         this.restTemplate = new RestTemplate();
@@ -39,6 +42,12 @@ public class ApiRequestFactory implements Runnable {
         new Thread(this).start();
     }
 
+    @Override
+    public void setAuthErrorListener(AuthErrorListener authErrorListener) {
+        this.authErrorListener = authErrorListener;
+    }
+
+    @Override
     public void executeRequest(BaseRequest baseRequest) {
         Logger.info("pushing request...");
         synchronized (this.requestsQueue) {
@@ -72,7 +81,7 @@ public class ApiRequestFactory implements Runnable {
     private <T> void makeRequest(BaseRequest<T> baseRequest) {
         System.out.println("(making request " + baseRequest.getEndpoint() + " )");
         int statusCode = -1;
-        boolean isTokenInvalid = false;
+        AuthErrorMessageDTO errorMessage = null;
         try {
             baseRequest.setAccessToken(this.userToken);
             ResponseEntity<T> response = restTemplate.exchange(this.serverIp + baseRequest.getEndpoint(), baseRequest.getRequestMethod(),
@@ -89,28 +98,41 @@ public class ApiRequestFactory implements Runnable {
         } catch (HttpClientErrorException e) {
 //            System.err.println(e.getRawStatusCode() + " " + e.getResponseBodyAsString());
             statusCode = e.getRawStatusCode();
-            if (statusCode == HttpStatus.UNAUTHORIZED.value())
-                isTokenInvalid = this.handleInvalidToken(e.getResponseBodyAsString());
+            if (statusCode == 400 || statusCode == 401)
+                errorMessage = this.getErrorMessage(e.getResponseBodyAsString());
         } catch (RestClientException e) {
             System.err.println("RestClientException!");
             System.err.println(e.getMessage());
         }
-        if (isTokenInvalid && !baseRequest.getResponseType().isAssignableFrom(TokenDTO.class)) {
-            System.err.println("!!!Invalid token!!!");
-            this.executeRequest(new RefreshRequest());
-            this.executeRequest(baseRequest);
+        if (errorMessage != null) {
+            if (errorMessage.isAccessTokenExpired()) {
+                System.err.println("!!!Invalid token!!!");
+                this.executeRequest(new RefreshRequest());
+                this.executeRequest(baseRequest);
+            }
+            if (errorMessage.isRefreshTokenInvalid())
+                this.authorizationError(errorMessage.getErrorDescription());
         } else if (baseRequest.hasRequestListener()) {
             baseRequest.getRequestListener().onRequestResult(false, statusCode, null);
         }
     }
 
-    private boolean handleInvalidToken(String message) {
+    private void authorizationError(String message) {
+        synchronized (this.requestsQueue) {
+            this.requestsQueue.clear();
+        }
+        if (this.authErrorListener != null)
+            this.authErrorListener.onAuthError(message);
+    }
+
+    private AuthErrorMessageDTO getErrorMessage(String message) {
         try {
-            return (this.objectMapper.readValue(message, UnauthorizedErrorDTO.class).isExpired()) ? true : false;
+            if (!message.isEmpty())
+                return this.objectMapper.readValue(message, AuthErrorMessageDTO.class);
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return false;
+        return null;
     }
 
     @SuppressWarnings("not in use!")

@@ -1,7 +1,7 @@
-package com.main.net.request;
+package com.main.api.request;
 
-import com.main.net.model.AccessToken;
-import com.main.net.util.ApiConstants;
+import com.main.api.data.AccessToken;
+import com.main.api.util.ApiConstants;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 

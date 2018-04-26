@@ -1,4 +1,6 @@
-package com.main.net.model;
+package com.main.api.data;
+
+import com.main.api.model.TokenDTO;
 
 public class AccessToken {
 

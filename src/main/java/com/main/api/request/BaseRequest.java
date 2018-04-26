@@ -1,9 +1,8 @@
-package com.main.net.request;
+package com.main.api.request;
 
-import com.main.net.callback.RequestResultInterface;
-import com.main.net.model.AccessToken;
-import com.main.net.model.Param;
-import com.main.net.model.TokenDTO;
+import com.main.api.listener.RequestResultListener;
+import com.main.api.data.AccessToken;
+import com.main.api.data.Param;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -20,7 +19,7 @@ public abstract class BaseRequest<T> {
     private String requestBody;
     private Class<T> responseType;
 
-    private RequestResultInterface<T> requestResultInterface;
+    private RequestResultListener<T> requestResultListener;
 
     public BaseRequest(String endpoint, HttpMethod requestMethod, Class<T> responseType) {
         this.endpoint = endpoint;
@@ -79,8 +78,8 @@ public abstract class BaseRequest<T> {
         this.responseType = responseType;
     }
 
-    public void setRequestResultInterface(RequestResultInterface<T> requestResultInterface) {
-        this.requestResultInterface = requestResultInterface;
+    public void setRequestResultListener(RequestResultListener<T> requestResultListener) {
+        this.requestResultListener = requestResultListener;
     }
 
     public HttpEntity getHttpEntity() {
@@ -90,14 +89,14 @@ public abstract class BaseRequest<T> {
     public abstract void setAccessToken(AccessToken accessToken);
 
     public boolean hasRequestListener() {
-        return (this.requestResultInterface != null) ? true : false;
+        return (this.requestResultListener != null) ? true : false;
     }
 
-    public void setRequestListener(RequestResultInterface requestResultInterface) {
-        this.requestResultInterface = requestResultInterface;
+    public void setRequestListener(RequestResultListener requestResultListener) {
+        this.requestResultListener = requestResultListener;
     }
 
-    public RequestResultInterface getRequestListener() {
-        return requestResultInterface;
+    public RequestResultListener getRequestListener() {
+        return requestResultListener;
     }
 }

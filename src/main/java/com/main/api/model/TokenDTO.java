@@ -1,4 +1,4 @@
-package com.main.net.model;
+package com.main.api.model;
 
 public class TokenDTO {
 

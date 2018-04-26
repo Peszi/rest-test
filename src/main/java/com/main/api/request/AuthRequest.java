@@ -1,18 +1,10 @@
-package com.main.net.request;
+package com.main.api.request;
 
-import com.main.net.model.AccessToken;
-import com.main.net.model.Param;
-import com.main.net.model.TokenDTO;
-import com.main.net.util.ApiConstants;
-import com.main.net.util.ApiUtil;
-import org.springframework.http.HttpHeaders;
+import com.main.api.data.AccessToken;
+import com.main.api.model.TokenDTO;
+import com.main.api.util.ApiConstants;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class AuthRequest extends BaseRequest<TokenDTO> {
 

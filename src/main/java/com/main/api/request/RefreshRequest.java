@@ -1,7 +1,7 @@
-package com.main.net.request;
+package com.main.api.request;
 
-import com.main.net.model.AccessToken;
-import com.main.net.util.ApiUtil;
+import com.main.api.data.AccessToken;
+import com.main.api.util.ApiUtil;
 
 import java.util.HashMap;
 import java.util.Map;

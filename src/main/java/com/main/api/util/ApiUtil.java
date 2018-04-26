@@ -1,4 +1,4 @@
-package com.main.net.util;
+package com.main.api.util;
 
 import java.util.Base64;
 import java.util.Map;

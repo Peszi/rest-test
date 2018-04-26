@@ -1,10 +1,11 @@
-package com.main.net;
+package com.main.api;
 
 import com.main.error.ServerErrorMessage;
 import org.springframework.http.ResponseEntity;
 
 import java.util.Optional;
 
+@Deprecated
 public class ResponseObject<T> {
 
     private ResponseEntity<T> responseObject;
