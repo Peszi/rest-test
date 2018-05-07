@@ -109,7 +109,7 @@ public class ApiRequestFactoryImpl implements ApiRequestFactory, Runnable {
         }
         if (errorMessage != null) {
             if (errorMessage.isAccessTokenExpired()) {
-                System.err.println("!!!Invalid token!!!");
+                System.err.println("invalid token...");
                 this.executeRequest(new RefreshRequest());
                 this.executeRequest(baseRequest);
             } else if (errorMessage.isRefreshTokenInvalid()) {

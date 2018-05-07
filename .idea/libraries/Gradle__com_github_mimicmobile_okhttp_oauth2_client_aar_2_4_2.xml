@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="Gradle: com.github.mimicmobile:okhttp-oauth2-client:aar:2.4.2">
+    <CLASSES>
+      <root url="file://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.github.mimicmobile/okhttp-oauth2-client/2.4.2/f08220927b8ae99abfe7c3eba196c93978107094/okhttp-oauth2-client-2.4.2.aar" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.gradle/caches/modules-2/files-2.1/com.github.mimicmobile/okhttp-oauth2-client/2.4.2/d6f96f9568e519e0594e5a9ff53dfdb23c4c63f6/okhttp-oauth2-client-2.4.2-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

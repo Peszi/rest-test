@@ -1,4 +1,4 @@
-package com.main.api;
+package com.main.app;
 
 public class Commands {
     public static final String LOGIN = "login",
