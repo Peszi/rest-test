@@ -94,15 +94,14 @@ public class ApiRequestFactoryImpl implements ApiRequestFactory, Runnable {
                 this.userToken.setUserToken((TokenDTO) response.getBody());
             }
             if (baseRequest.hasRequestListener())
-                baseRequest.getRequestListener().onRequestResult(true, response.getStatusCodeValue(), response.getBody());
+                baseRequest.callRequestResult(true, response.getStatusCodeValue(), response.getBody(), "");
             return;
         } catch (ResourceAccessException e) {
             System.err.println("Timeout!");
         } catch (HttpClientErrorException e) {
 //            System.err.println(e.getRawStatusCode() + " " + e.getResponseBodyAsString());
             statusCode = e.getRawStatusCode();
-            if (statusCode == 400 || statusCode == 401)
-                errorMessage = this.getErrorMessage(e.getResponseBodyAsString());
+            errorMessage = this.getErrorMessage(e.getResponseBodyAsString());
         } catch (RestClientException e) {
             System.err.println("RestClientException!");
             System.err.println(e.getMessage());
@@ -116,10 +115,10 @@ public class ApiRequestFactoryImpl implements ApiRequestFactory, Runnable {
                 this.authorizationError(errorMessage.getErrorDescription());
             } else {
                 if (baseRequest.hasRequestListener())
-                    baseRequest.getRequestListener().onRequestResult(false, statusCode, errorMessage.getMessage());
+                    baseRequest.callRequestResult(false, statusCode, null, errorMessage.getMessage());
             }
         } else if (baseRequest.hasRequestListener()) {
-            baseRequest.getRequestListener().onRequestResult(false, statusCode, null);
+            baseRequest.callRequestResult(false, statusCode, null, "request timeout!");
         }
     }
 

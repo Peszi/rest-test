@@ -82,7 +82,7 @@ public class RestTest<T> implements RequestInterface, AuthErrorListener, Request
     }
 
     @Override
-    public void onRequestResult(boolean status, int statusCode, T object) {
+    public void onRequestResult(boolean status, int statusCode, T object, String errorMessage) {
         final long elapsedTime = (System.currentTimeMillis() - this.lastTime);
         String message = "";
         if (object instanceof String)
@@ -90,7 +90,7 @@ public class RestTest<T> implements RequestInterface, AuthErrorListener, Request
         PrintStream out = System.out;
         if (!status)
             out = System.err;
-        out.println("status: " + statusCode + " time: " + elapsedTime + " " + message);
+        out.println("status: " + statusCode + " time: " + elapsedTime + " " + message + " {" + errorMessage + "}");
     }
 
     @Override

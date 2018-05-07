@@ -96,6 +96,10 @@ public abstract class BaseRequest<T> {
         this.requestResultListener = requestResultListener;
     }
 
+    public void callRequestResult(boolean status, int statusCode, T object, String errorMessage) {
+        this.requestResultListener.onRequestResult(status, statusCode, object, errorMessage);
+    }
+
     public RequestResultListener getRequestListener() {
         return requestResultListener;
     }
