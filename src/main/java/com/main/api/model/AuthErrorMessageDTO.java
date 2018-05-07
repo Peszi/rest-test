@@ -1,9 +1,14 @@
 package com.main.api.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class AuthErrorMessageDTO {
 
     private String error;
     private String error_description;
+    private String message;
 
     public void setError(String error) {
         this.error = error;
@@ -13,8 +18,16 @@ public class AuthErrorMessageDTO {
         this.error_description = error_description;
     }
 
+    public void setMessage(String message) {
+        this.message = message;
+    }
+
     public String getErrorDescription() {
         return error_description;
+    }
+
+    public String getMessage() {
+        return message;
     }
 
     public boolean isAccessTokenExpired() {

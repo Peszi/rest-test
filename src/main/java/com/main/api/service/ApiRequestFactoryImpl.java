@@ -1,5 +1,6 @@
 package com.main.api.service;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.main.api.Logger;
 import com.main.api.listener.AuthErrorListener;
@@ -38,7 +39,9 @@ public class ApiRequestFactoryImpl implements ApiRequestFactory, Runnable {
         this.restTemplate = new RestTemplate();
         this.restTemplate.getMessageConverters().add(new StringHttpMessageConverter());
         this.objectMapper = new ObjectMapper();
+//        this.objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         this.userToken = new AccessToken(ApiUtil.getBasicAuth(clientId, secret));
+//        System.out.println(this.userToken.getBasicAuth());
         new Thread(this).start();
     }
 
@@ -79,7 +82,7 @@ public class ApiRequestFactoryImpl implements ApiRequestFactory, Runnable {
     }
 
     private <T> void makeRequest(BaseRequest<T> baseRequest) {
-        System.out.println("(making request " + baseRequest.getEndpoint() + " )");
+        System.out.println("sending request... '" + baseRequest.getEndpoint() + "'");
         int statusCode = -1;
         AuthErrorMessageDTO errorMessage = null;
         try {
@@ -109,9 +112,12 @@ public class ApiRequestFactoryImpl implements ApiRequestFactory, Runnable {
                 System.err.println("!!!Invalid token!!!");
                 this.executeRequest(new RefreshRequest());
                 this.executeRequest(baseRequest);
-            }
-            if (errorMessage.isRefreshTokenInvalid())
+            } else if (errorMessage.isRefreshTokenInvalid()) {
                 this.authorizationError(errorMessage.getErrorDescription());
+            } else {
+                if (baseRequest.hasRequestListener())
+                    baseRequest.getRequestListener().onRequestResult(false, statusCode, errorMessage.getMessage());
+            }
         } else if (baseRequest.hasRequestListener()) {
             baseRequest.getRequestListener().onRequestResult(false, statusCode, null);
         }
@@ -141,5 +147,10 @@ public class ApiRequestFactoryImpl implements ApiRequestFactory, Runnable {
         SimpleClientHttpRequestFactory requestFactory = (SimpleClientHttpRequestFactory) restTemplate.getRequestFactory();
         requestFactory.setReadTimeout(timeout);
         requestFactory.setConnectTimeout(timeout);
+    }
+
+    @Override
+    public AccessToken getAccessToken() {
+        return this.userToken;
     }
 }
