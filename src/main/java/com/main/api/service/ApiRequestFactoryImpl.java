@@ -1,16 +1,18 @@
 package com.main.api.service;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.main.api.Logger;
-import com.main.api.listener.AuthErrorListener;
+import com.main.api.data.RequestStatus;
+import com.main.api.listener.AuthorizationListener;
 import com.main.api.data.AccessToken;
 import com.main.api.model.AuthErrorMessageDTO;
 import com.main.api.request.BaseRequest;
 import com.main.api.model.TokenDTO;
 import com.main.api.request.RefreshRequest;
 import com.main.api.util.ApiUtil;
+import com.main.api.util.RequestInterceptor;
 import org.springframework.http.*;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.web.client.HttpClientErrorException;
@@ -19,19 +21,20 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
-import java.util.LinkedList;
+import java.util.*;
 
 public class ApiRequestFactoryImpl implements ApiRequestFactory, Runnable {
 
     private String serverIp;
 
     private LinkedList<BaseRequest> requestsQueue;
+    private List<ClientHttpRequestInterceptor> interceptors;
     private RestTemplate restTemplate;
     private ObjectMapper objectMapper;
 
     private AccessToken userToken;
 
-    private AuthErrorListener authErrorListener;
+    private AuthorizationListener authorizationListener;
 
     public ApiRequestFactoryImpl(String serverIp, String clientId, String secret) {
         this.serverIp = serverIp;
@@ -39,15 +42,24 @@ public class ApiRequestFactoryImpl implements ApiRequestFactory, Runnable {
         this.restTemplate = new RestTemplate();
         this.restTemplate.getMessageConverters().add(new StringHttpMessageConverter());
         this.objectMapper = new ObjectMapper();
-//        this.objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        this.interceptors = new ArrayList<>();
+        this.interceptors.add(new RequestInterceptor());
+        this.setTimeout(this.restTemplate, 5000);
         this.userToken = new AccessToken(ApiUtil.getBasicAuth(clientId, secret));
-//        System.out.println(this.userToken.getBasicAuth());
         new Thread(this).start();
     }
 
     @Override
-    public void setAuthErrorListener(AuthErrorListener authErrorListener) {
-        this.authErrorListener = authErrorListener;
+    public void enableDebug(boolean enable) {
+        if (enable)
+            this.restTemplate.setInterceptors(this.interceptors);
+        else
+            this.restTemplate.getInterceptors().clear();
+    }
+
+    @Override
+    public void setAuthorizationListener(AuthorizationListener authorizationListener) {
+        this.authorizationListener = authorizationListener;
     }
 
     @Override
@@ -82,19 +94,19 @@ public class ApiRequestFactoryImpl implements ApiRequestFactory, Runnable {
     }
 
     private <T> void makeRequest(BaseRequest<T> baseRequest) {
-        System.out.println("sending request... '" + baseRequest.getEndpoint() + "'");
+//        System.out.println("sending request... '" + baseRequest.getURL(this.serverIp) + "'");
         int statusCode = -1;
         AuthErrorMessageDTO errorMessage = null;
         try {
             baseRequest.setAccessToken(this.userToken);
-            ResponseEntity<T> response = restTemplate.exchange(this.serverIp + baseRequest.getEndpoint(), baseRequest.getRequestMethod(),
-                                                                baseRequest.getHttpEntity(), baseRequest.getResponseType(), baseRequest.getRequestParams());
+            ResponseEntity<T> response = restTemplate.exchange(baseRequest.getURL(this.serverIp), baseRequest.getRequestMethod(),
+                                                                baseRequest.getHttpEntity(), baseRequest.getResponseType());
             if (baseRequest.getResponseType().isAssignableFrom(TokenDTO.class)) {
                 Logger.info("Authorization success!");
                 this.userToken.setUserToken((TokenDTO) response.getBody());
             }
             if (baseRequest.hasRequestListener())
-                baseRequest.callRequestResult(true, response.getStatusCodeValue(), response.getBody(), "");
+                baseRequest.callResultListener(new RequestStatus<>(true, response.getStatusCodeValue(), response.getBody()));
             return;
         } catch (ResourceAccessException e) {
             System.err.println("Timeout!");
@@ -107,18 +119,22 @@ public class ApiRequestFactoryImpl implements ApiRequestFactory, Runnable {
             System.err.println(e.getMessage());
         }
         if (errorMessage != null) {
-            if (errorMessage.isAccessTokenExpired()) {
-                System.err.println("invalid token...");
-                this.executeRequest(new RefreshRequest());
-                this.executeRequest(baseRequest);
+            if (errorMessage.isAccessTokenInvalid()) {
+                if (this.getAccessToken().getUserToken().hasToken()) {
+                    System.err.println("invalid token...");
+                    this.executeRequest(new RefreshRequest());
+                    this.executeRequest(baseRequest);
+                } else {
+                    baseRequest.callResultListener(new RequestStatus<>(false, statusCode, errorMessage.getErrorDescription()));
+                }
             } else if (errorMessage.isRefreshTokenInvalid()) {
                 this.authorizationError(errorMessage.getErrorDescription());
+                baseRequest.callResultListener(new RequestStatus<>(false, statusCode, errorMessage.getErrorDescription()));
             } else {
-                if (baseRequest.hasRequestListener())
-                    baseRequest.callRequestResult(false, statusCode, null, errorMessage.getMessage());
+                baseRequest.callResultListener(new RequestStatus<>(false, statusCode, errorMessage.getMessage()));
             }
         } else if (baseRequest.hasRequestListener()) {
-            baseRequest.callRequestResult(false, statusCode, null, "request timeout!");
+            baseRequest.callResultListener(new RequestStatus<>(false, statusCode, "invalid request!"));
         }
     }
 
@@ -126,8 +142,8 @@ public class ApiRequestFactoryImpl implements ApiRequestFactory, Runnable {
         synchronized (this.requestsQueue) {
             this.requestsQueue.clear();
         }
-        if (this.authErrorListener != null)
-            this.authErrorListener.onAuthError(message);
+        if (this.authorizationListener != null) // && this.getAccessToken().getUserToken().hasToken())
+            this.authorizationListener.onClientLoggedOut(message);
     }
 
     private AuthErrorMessageDTO getErrorMessage(String message) {

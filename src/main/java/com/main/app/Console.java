@@ -1,9 +1,14 @@
 package com.main.app;
 
 import com.main.CommandData;
+import com.main.api.data.Param;
+import com.main.api.model.TokenDTO;
+import com.main.api.request.BaseRequest;
 import com.main.api.request.DataRequest;
 import com.main.api.request.LoginRequest;
 import com.main.api.request.LogoutRequest;
+import com.main.app.service.ClientService;
+import com.main.app.service.ClientServiceImpl;
 import org.springframework.http.HttpMethod;
 
 import java.lang.reflect.Method;
@@ -12,110 +17,155 @@ import java.util.Map;
 
 public class Console {
 
-    private RequestInterface requestInterface;
-    private Map<String, CommandData> commandsMap;
+    private ClientService clientService;
+    private Map<String, CommandsGroup> commandsMap;
 
-    public Console(RequestInterface requestInterface) {
-        this.requestInterface = requestInterface;
+    public Console() {
+        this.clientService = new ClientServiceImpl();
         this.commandsMap = new HashMap<>();
         for (Method method : this.getClass().getMethods()) {
             if (method.isAnnotationPresent(Command.class)) {
                 final Command command = method.getAnnotation(Command.class);
-                this.commandsMap.put(command.name(), new CommandData(method));
+                if (this.commandsMap.containsKey(command.group())) {
+                    this.commandsMap.get(command.group()).addCommand(method.getName().toLowerCase(), new CommandData(method));
+                } else {
+                    CommandsGroup commandsGroup = new CommandsGroup();
+                    commandsGroup.addCommand(method.getName().toLowerCase(), new CommandData(method));
+                    this.commandsMap.put(command.group(), commandsGroup);
+                }
             }
         }
-    }
-
-    // Commands
-
-    @Command(name = "help", description = "print a list of all supported commands")
-    public void printHelp() {
-        System.out.println("list of commands:");
-        for(CommandData command : this.commandsMap.values())
-            System.out.println(">" + command.getDescription());
-    }
-
-    @Command(name = "token", description = "<token type> print access or refresh token")
-    public void printToken(String token) {
-        String tokenValue = this.requestInterface.getAccessToken().getAccessToken();
-        if (token.equalsIgnoreCase("refresh"))
-            tokenValue = this.requestInterface.getAccessToken().getRefreshToken();
-        if (!tokenValue.isEmpty())
-            System.out.println("token: " + tokenValue);
-        else
-            System.err.println("there is no token!");
-    }
-
-    @Command(name = "login", description = "<username> <password> logging with credentials")
-    public void userLogin(String username, String password) {
-        this.requestInterface.sendRequest(new LoginRequest(username, password));
-    }
-
-    @Command(name = "logout", description = "revoking access and refresh token")
-    public void userLogout() {
-        this.requestInterface.sendRequest(new LogoutRequest());
-    }
-
-    // Room
-
-    @Command(name = "join", description = "<room id> joining room by room ID")
-    public void joinRoom(String roomId) {
-        try {
-            this.requestInterface.sendRequest(new DataRequest<>("/api/rooms/" + Long.valueOf(roomId), HttpMethod.POST, String.class));
-        } catch (NumberFormatException e) {
-            System.err.println("incorrect argument, number expected!");
-        }
-    }
-
-    @Command(name = "leave", description = "leaving current room")
-    public void leaveRoom() {
-        this.requestInterface.sendRequest(new DataRequest<>("/api/rooms", HttpMethod.DELETE, String.class));
-    }
-
-    @Command(name = "rooms", description = "print all existing rooms")
-    public void getAllRooms() {
-        this.requestInterface.sendRequest(new DataRequest<>("/api/rooms", HttpMethod.GET, String.class));
-    }
-
-    @Command(name = "room", description = "print current room details")
-    public void getRoom() {
-        this.requestInterface.sendRequest(new DataRequest<>("/api/room", HttpMethod.GET, String.class));
-    }
-
-    // Game
-
-    @Command(name = "update", description = "update and get game data")
-    public void updateGame() {
-        this.requestInterface.sendRequest(new DataRequest<>("/api/room/game", HttpMethod.GET, String.class));
+        System.out.println("type 'login <username> <password>' to start..");
     }
 
     // Utilities
 
     public void executeCommand(String command, String... args) {
-        if (this.commandsMap.containsKey(command)) {
-            CommandData commandData = this.commandsMap.get(command);
-            if (commandData.getArgsLen() < args.length)
-                commandData.execute(this, this.getArguments(commandData.getArgsLen(), args));
-            else
-                System.err.println(this.getMissingArgsMessage((commandData.getArgsLen() + 1) - args.length));
-        } else {
-            System.out.println("No command found!");
+        boolean commandFound = false;
+        for (Map.Entry<String, CommandsGroup> commandsGroup : this.commandsMap.entrySet()) {
+            if (commandsGroup.getValue().containsKey(command)) {
+                commandFound = true;
+                CommandData commandData = commandsGroup.getValue().getCommand(command);
+                if (!commandData.execute(this, args))
+                    System.err.println(this.getInvalidArgsMessage(commandData));
+            }
         }
+        if (!commandFound)
+            System.out.println("No command found!");
+    }
+
+    // Commands
+
+    @Command(group = "utility", description = "print a list of all supported commands")
+    public void help() {
+        System.out.println("list of commands:");
+        for (Map.Entry<String, CommandsGroup> commandsGroup : this.commandsMap.entrySet()) {
+            System.out.println(" GROUP: " + commandsGroup.getKey().toUpperCase());
+            for (CommandData commandData : commandsGroup.getValue().getCommandsMap().values())
+                System.out.println("  -" + commandData.getDescription());
+        }
+    }
+
+    @Command(group = "utility", arguments = "<token type>", description = "(string) print access or refresh token")
+    public void token(String token) {
+        this.clientService.printToken(token);
+    }
+
+    @Command(group = "utility", arguments = "<enable>", description = "(boolean) print debug data")
+    public void debug(String enable) {
+        this.clientService.enableDebug(enable);
+    }
+
+    // User
+
+    @Command(group = "user", description = "<email>(string) <password>(string) logging with credentials")
+    public void login(String email, String password) {
+        this.clientService.getUserService().userLogin(email, password);
+    }
+
+    @Command(group = "user", description = "revoking access and refresh token")
+    public void logout() {
+      this.clientService.getUserService().userLogout();
+    }
+
+    // Room
+
+    @Command(group = "room", description = "create new room")
+    public void createRoom() {
+        this.clientService.getRoomService().createRoom();
+    }
+
+    @Command(group = "room", description = "<room id>(long) joining room by room ID")
+    public void joinRoom(String roomId) {
+        this.clientService.getRoomService().joinRoom(roomId);
+    }
+
+    @Command(group = "room", description = "leaving current room")
+    public void leaveRoom() {
+        this.clientService.getRoomService().leaveRoom();
+    }
+
+    @Command(group = "room", description = "print current room details")
+    public void room() {
+        this.clientService.getRoomService().printRoom();
+    }
+
+    @Command(group = "room", description = "print all existing rooms")
+    public void rooms() {
+        this.clientService.getRoomService().printAllRooms();
+    }
+
+    @Command(group = "room", description = "<team id>(long) change team with team id")
+    public void edtTeam(String teamId) {
+        this.clientService.getRoomService().changeTeam(teamId);
+    }
+
+    // Host Room
+
+//    @Command(group = "host", description = "<alias>(string) create a new team with name (room host)")
+//    public void addTeam(String alias) {
+//        this.requestInterface.sendRequest(new DataRequest<>("/api/room/host/team/", HttpMethod.POST, String.class));
+//    }
+//
+//    @Command(group = "host", description = "<team id>(long) remove existing team (room host)")
+//    public void rmvTeam(String teamId) {
+//        this.requestInterface.sendRequest(new DataRequest<>("/api/room/host/team/" + teamId, HttpMethod.DELETE, String.class));
+//    }
+//
+//    @Command(group = "host", description = "<gameMode>(int) change game mode (room host)")
+//    public void edtMode(String gameMode) {
+//        this.requestInterface.sendRequest(new DataRequest<>("/api/room/host/mode/" + gameMode, HttpMethod.POST, String.class));
+//    }
+//
+//    @Command(group = "host", description = "<longitude>(long) <latitude>(long) <radius>(int) change game location (room host)")
+//    public void edtLocation(String longitude, String latitude, String radius) {
+//        DataRequest dataRequest = new DataRequest<>("/api/room/host/zone", HttpMethod.POST, String.class);
+//        dataRequest.addParameter(new Param("zoneLongitude", longitude));
+//        dataRequest.addParameter(new Param("zoneLatitude", latitude));
+//        dataRequest.addParameter(new Param("zoneRadius", radius));
+//        this.requestInterface.sendRequest(dataRequest);
+//    }
+//
+//    @Command(group = "host", description = "<pointsLimit>(int) <timeLimit>(int) <zoneCapacity>(int) change zone control prefs (room host)")
+//    public void edtZoneControl(String longitude, String latitude, String radius) {
+//        DataRequest dataRequest = new DataRequest<>("/api/room/host/zone", HttpMethod.POST, String.class);
+//        dataRequest.addParameter(new Param("pointsLimit", longitude));
+//        dataRequest.addParameter(new Param("timeLimit", latitude));
+//        dataRequest.addParameter(new Param("zoneCapacity", radius));
+//        this.requestInterface.sendRequest(dataRequest);
+//    }
+
+    // Game
+
+    @Command(group = "game", description = "update and get game data")
+    public void update(String gameMode) {
+        DataRequest dataRequest = new DataRequest<>("/api/room/game", HttpMethod.GET, String.class);
+        dataRequest.setRequestListener(requestStatus -> {});
     }
 
     // Getters
 
-    private String[] getArguments(int length, String... args) {
-        String[] arguments = new String[length];
-        for (int i = 0; i < length; i++)
-            if ((i + 1) < args.length)
-                arguments[i] = args[i + 1];
-        return arguments;
-    }
-
-    private String getMissingArgsMessage(int argsCount) {
-        if (argsCount > 1)
-            return "missing " + argsCount + " arguments...";
-        return "missing one argument...";
+    private String getInvalidArgsMessage(CommandData commandData) {
+        return "invalid arguments - " + commandData.getArgumentsDescription();
     }
 }

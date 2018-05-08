@@ -30,7 +30,7 @@ public class AuthErrorMessageDTO {
         return message;
     }
 
-    public boolean isAccessTokenExpired() {
+    public boolean isAccessTokenInvalid() {
         return (this.error != null && this.error.endsWith("invalid_token")) ? true : false;
     }
 

@@ -1,11 +1,13 @@
 package com.main.api.request;
 
+import com.main.api.data.RequestStatus;
 import com.main.api.listener.RequestResultListener;
 import com.main.api.data.AccessToken;
 import com.main.api.data.Param;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,12 +40,11 @@ public abstract class BaseRequest<T> {
         this.requestMethod = requestMethod;
     }
 
-    public String getEndpoint() {
-        return endpoint;
-    }
-
-    public void setEndpoint(String endpoint) {
-        this.endpoint = endpoint;
+    public String getURL(String serverIp) {
+        UriComponentsBuilder requestUrl = UriComponentsBuilder.fromHttpUrl(serverIp + this.endpoint);
+        for (Param param : this.requestParams)
+            requestUrl.queryParam(param.getKey(), param.getValue());
+        return requestUrl.toUriString();
     }
 
     public String getRequestBody() {
@@ -62,12 +63,8 @@ public abstract class BaseRequest<T> {
         this.requestHeaders = requestHeaders;
     }
 
-    public List<Param> getRequestParams() {
-        return requestParams;
-    }
-
-    public void setRequestParams(List<Param> requestParams) {
-        this.requestParams = requestParams;
+    public void addParameter(Param param) {
+        this.requestParams.add(param);
     }
 
     public Class<T> getResponseType() {
@@ -76,10 +73,6 @@ public abstract class BaseRequest<T> {
 
     public void setResponseType(Class<T> responseType) {
         this.responseType = responseType;
-    }
-
-    public void setRequestResultListener(RequestResultListener<T> requestResultListener) {
-        this.requestResultListener = requestResultListener;
     }
 
     public HttpEntity getHttpEntity() {
@@ -92,15 +85,12 @@ public abstract class BaseRequest<T> {
         return (this.requestResultListener != null) ? true : false;
     }
 
-    public void setRequestListener(RequestResultListener requestResultListener) {
+    public void setRequestListener(RequestResultListener<T> requestResultListener) {
         this.requestResultListener = requestResultListener;
     }
 
-    public void callRequestResult(boolean status, int statusCode, T object, String errorMessage) {
-        this.requestResultListener.onRequestResult(status, statusCode, object, errorMessage);
-    }
-
-    public RequestResultListener getRequestListener() {
-        return requestResultListener;
+    public void callResultListener(RequestStatus<T> requestStatus) {
+        if (this.requestResultListener != null)
+            this.requestResultListener.onRequestResult(requestStatus);
     }
 }

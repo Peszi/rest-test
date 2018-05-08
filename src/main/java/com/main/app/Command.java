@@ -8,6 +8,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
 public @interface Command {
-    String name();
+    String group();
+    String arguments() default "";
     String description() default "";
 }

@@ -34,4 +34,8 @@ public class TokenDTO {
     public int getExpiresIn() {
         return expiresIn;
     }
+
+    public boolean hasToken() {
+        return !this.refreshToken.isEmpty();
+    }
 }
