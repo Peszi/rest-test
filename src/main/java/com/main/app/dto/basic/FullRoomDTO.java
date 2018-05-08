@@ -1,16 +1,15 @@
 package com.main.app.dto.basic;
 
-import lombok.Data;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.util.List;
 
-@Data
-public class FullRoomDTO {
-
-    private long id;
-    private long hostId;
-    private boolean isStarted;
-    private int teamsCount;
+@Getter
+@Setter
+@NoArgsConstructor
+public class FullRoomDTO extends RoomDTO {
 
     private List<TeamDTO> teamsList;
 

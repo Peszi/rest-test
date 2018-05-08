@@ -1,5 +1,6 @@
 package com.main.app;
 
+import com.google.maps.model.LatLng;
 import com.main.CommandData;
 import com.main.api.data.Param;
 import com.main.api.model.TokenDTO;
@@ -7,6 +8,7 @@ import com.main.api.request.BaseRequest;
 import com.main.api.request.DataRequest;
 import com.main.api.request.LoginRequest;
 import com.main.api.request.LogoutRequest;
+import com.main.app.map.StaticMapURL;
 import com.main.app.service.ClientService;
 import com.main.app.service.ClientServiceImpl;
 import org.springframework.http.HttpMethod;
@@ -52,6 +54,9 @@ public class Console {
         }
         if (!commandFound)
             System.out.println("No command found!");
+
+        LatLng center = new LatLng(49.7627891d,18.8682649d);
+        System.out.println("MAP " + StaticMapURL.MapBuilder.createMap().setCenter(center).setZoom(17).addPoly(center, 160).build());
     }
 
     // Commands
@@ -91,17 +96,17 @@ public class Console {
     // Room
 
     @Command(group = "room", description = "create new room")
-    public void createRoom() {
+    public void create() {
         this.clientService.getRoomService().createRoom();
     }
 
-    @Command(group = "room", description = "<room id>(long) joining room by room ID")
-    public void joinRoom(String roomId) {
+    @Command(group = "room", description = "<room idx>(int) joining room by room IDX")
+    public void join(String roomId) {
         this.clientService.getRoomService().joinRoom(roomId);
     }
 
     @Command(group = "room", description = "leaving current room")
-    public void leaveRoom() {
+    public void leave() {
         this.clientService.getRoomService().leaveRoom();
     }
 
@@ -115,8 +120,8 @@ public class Console {
         this.clientService.getRoomService().printAllRooms();
     }
 
-    @Command(group = "room", description = "<team id>(long) change team with team id")
-    public void edtTeam(String teamId) {
+    @Command(group = "room", description = "<team alias>(string) change team with team id")
+    public void changeTeam(String teamId) {
         this.clientService.getRoomService().changeTeam(teamId);
     }
 

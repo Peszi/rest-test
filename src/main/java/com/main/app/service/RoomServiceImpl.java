@@ -2,9 +2,7 @@ package com.main.app.service;
 
 import com.main.api.request.DataRequest;
 import com.main.app.RestClient;
-import com.main.app.dto.basic.FullRoomDTO;
-import com.main.app.dto.basic.RoomDTO;
-import com.main.app.dto.basic.RoomsListDTO;
+import com.main.app.dto.basic.*;
 import org.springframework.http.HttpMethod;
 
 import java.util.List;
@@ -58,7 +56,19 @@ public class RoomServiceImpl implements RoomService {
         DataRequest<FullRoomDTO> dataRequest = new DataRequest<>("/api/room", HttpMethod.GET, FullRoomDTO.class);
         dataRequest.setRequestListener(requestStatus -> {
             if (requestStatus.isStatusOK()) {
-                System.out.println("Room " + requestStatus.getObject().getTeamsCount());
+                FullRoomDTO room = requestStatus.getObject();
+                System.out.println("======== ROOM ========");
+                System.out.println("roomHost   : " + room.getHostName());
+                System.out.println("isStarted  : " + room.isStarted());
+
+
+                System.out.println("-------- TEAMS -------");
+                for (TeamDTO team : room.getTeamsList()) {
+                    System.out.println("TEAM " + team.getAlias());
+                    for (BasicUserDTO user : team.getUsersList())
+                        System.out.println(" - " + user.getName());
+                }
+                System.out.println("----------------------");
             } else
                 System.err.println("[" + requestStatus.getErrorMessage() + "]");
         });
@@ -70,15 +80,15 @@ public class RoomServiceImpl implements RoomService {
         DataRequest<RoomsListDTO> dataRequest = new DataRequest<>("/api/rooms", HttpMethod.GET, RoomsListDTO.class);
         dataRequest.setRequestListener(requestStatus -> {
             if (requestStatus.isStatusOK()) {
-                Iterable<RoomDTO> roomsList = requestStatus.getObject().getRoomsList();
-                int idx = 0;
+                List<RoomDTO> roomsList = requestStatus.getObject().getRoomsList();
                 System.out.println("Has room " + requestStatus.getObject().isHasRoom());
-                for (RoomDTO room : roomsList) {
-                    System.out.println("======== " + idx + " ========");
-                    System.out.println("roomHostID      : " + room.getHostId());
-                    System.out.println("teamsCount      : " + room.getTeamsCount());
-                    System.out.println("-------------------");
-                    idx++;
+                for (int i = 0; i < roomsList.size(); i++) {
+                    final RoomDTO room = roomsList.get(i);
+                    System.out.println("========= " + i + " ==========");
+                    System.out.println("roomHost   : " + room.getHostName());
+                    System.out.println("isStarted  : " + room.isStarted());
+                    System.out.println("teamsCount : " + room.getTeamsCount());
+                    System.out.println("----------------------");
                 }
             } else
                 System.err.println("[" + requestStatus.getErrorMessage() + "]");
